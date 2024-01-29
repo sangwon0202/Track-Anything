@@ -314,6 +314,10 @@ def custom_process(images, init_mask) :
     for i in range(len(images)) :
         separated_images[i % way].append(images[i])
 
+    print("origin length: " + len(images))
+    print("separated length: " + len(separated_images[0]))
+    
+
     for w in range(way) :
         masks, logits, painted_images = model.generator(images=separated_images[w], template_mask=init_masks[w])
         model.xmem.clear_memory()
@@ -327,9 +331,9 @@ def custom_process(images, init_mask) :
     painted_images = []
 
     for i in range(len(images)) :
-        masks.append(separated_masks[i % way][i / way])
-        logits.append(separated_logits[i % way][i / way])
-        painted_images.append(separated_painted_images[i % way][i / way])
+        masks.append(separated_masks[i % way][int(i / way)])
+        logits.append(separated_logits[i % way][int(i / way)])
+        painted_images.append(separated_painted_images[i % way][int(i / way)])
     
     return masks, logits, painted_images
 
