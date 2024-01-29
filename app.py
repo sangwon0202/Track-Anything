@@ -314,8 +314,8 @@ def custom_process(images, init_mask) :
     for i in range(len(images)) :
         separated_images[i % way].append(images[i])
 
-    print("origin length: " + len(images))
-    print("separated length: " + len(separated_images[0]))
+    print("origin length: " + str(len(images)))
+    print("separated length: " + str(len(separated_images[0])))
     
 
     for w in range(way) :
