@@ -115,7 +115,7 @@ def get_frames_from_video(video_input, video_state):
     model.samcontroler.sam_controler.reset_image() 
     model.samcontroler.sam_controler.set_image(video_state["origin_images"][0])
     return video_state, video_info, video_state["origin_images"][0], gr.update(visible=True, maximum=len(frames), value=1), gr.update(visible=True, maximum=len(frames), value=len(frames)), \
-                        gr.update(visible=True),\
+                        gr.update(visible=True), gr.update(visible=True), \
                         gr.update(visible=True), gr.update(visible=True), \
                         gr.update(visible=True), gr.update(visible=True), \
                         gr.update(visible=True), gr.update(visible=True), \
@@ -154,6 +154,12 @@ def get_resize_ratio(resize_ratio_slider, interactive_state):
     interactive_state["resize_ratio"] = resize_ratio_slider
 
     return interactive_state
+
+
+def way_controll(way_controll_slider, way_state):
+    way_state = way_controll_slider
+
+    return way_state
 
 # use sam to get the mask
 def sam_refine(video_state, point_prompt, click_state, interactive_state, evt:gr.SelectData):
@@ -227,7 +233,7 @@ def show_mask(video_state, interactive_state, mask_dropdown):
     return select_frame, operation_log
 
 # tracking vos
-def vos_tracking_video(video_state, interactive_state, mask_dropdown):
+def vos_tracking_video(video_state, interactive_state, mask_dropdown, way):
     operation_log = [("",""), ("Track the selected masks, and then you can select the masks for inpainting.","Normal")]
     model.xmem.clear_memory()
     if interactive_state["track_end_number"]:
@@ -255,7 +261,7 @@ def vos_tracking_video(video_state, interactive_state, mask_dropdown):
         # return video_output, video_state, interactive_state, operation_error
 
 
-    masks, logits, painted_images = custom_process(images=following_frames, init_mask=template_mask)
+    masks, logits, painted_images = custom_process(images=following_frames, init_mask=template_mask, way=way)
 
     """
     masks, logits, painted_images = model.generator(images=following_frames, template_mask=template_mask)
@@ -295,8 +301,7 @@ def vos_tracking_video(video_state, interactive_state, mask_dropdown):
 
 
 # output: masks, logits, painted_images
-def custom_process(images, init_mask) :
-    way = 4
+def custom_process(images, init_mask,way) :
     
     if(len(images) < way) :
         masks, logits, painted_images = model.generator(images=images, template_mask=init_mask)
@@ -312,12 +317,9 @@ def custom_process(images, init_mask) :
     separated_painted_images = []
 
     for i in range(len(images)) :
-        print(str(i) + " -> " + str(i % way))
         separated_images[i % way].append(images[i])
 
     print("origin length: " + str(len(images)))
-    print("separated_images length: " + str(len(separated_images)))
-    print("separated length: " + str(len(separated_images[0])))
     
 
     for w in range(way) :
@@ -336,6 +338,8 @@ def custom_process(images, init_mask) :
         masks.append(separated_masks[i % way][int(i / way)])
         logits.append(separated_logits[i % way][int(i / way)])
         painted_images.append(separated_painted_images[i % way][int(i / way)])
+
+    print("result length: " + str(len(painted_images)))
     
     return masks, logits, painted_images
 
@@ -478,6 +482,10 @@ with gr.Blocks() as iface:
         "fps": 30
         }
     )
+
+    # for way control
+    way_state = gr.State(1)
+
     gr.Markdown(title)
     gr.Markdown(description)
     with gr.Row():
@@ -515,6 +523,7 @@ with gr.Blocks() as iface:
                     template_frame = gr.Image(type="pil",interactive=True, elem_id="template_frame", visible=False).style(height=360)
                     image_selection_slider = gr.Slider(minimum=1, maximum=100, step=1, value=1, label="Image Selection", visible=False)
                     track_pause_number_slider = gr.Slider(minimum=1, maximum=100, step=1, value=1, label="Track end frames", visible=False)
+                    way_controll_slider = gr.Slider(minimum=1, maximum=100, step=1, value=1, label="way controll", visible=False)
             
                 with gr.Column():
                     run_status = gr.HighlightedText(value=[("Text","Error"),("to be","Label 2"),("highlighted","Label 3")], visible=False)
@@ -531,7 +540,7 @@ with gr.Blocks() as iface:
             video_input, video_state
         ],
         outputs=[video_state, video_info, template_frame,
-                 image_selection_slider, track_pause_number_slider,point_prompt, clear_button_click, Add_mask_button, template_frame,
+                 image_selection_slider, track_pause_number_slider,point_prompt, way_controll_slider, clear_button_click, Add_mask_button, template_frame,
                  tracking_video_predict_button, video_output, mask_dropdown, remove_mask_button, inpaint_video_predict_button, run_status]
     )   
 
@@ -542,6 +551,9 @@ with gr.Blocks() as iface:
     track_pause_number_slider.release(fn=get_end_number, 
                                    inputs=[track_pause_number_slider, video_state, interactive_state], 
                                    outputs=[template_frame, interactive_state, run_status], api_name="end_image")
+    way_controll_slider.release(fn=way_controll, 
+                                   inputs=[way_controll_slider, way_state], 
+                                   outputs=[way_state], api_name="way_controll")
     resize_ratio_slider.release(fn=get_resize_ratio, 
                                    inputs=[resize_ratio_slider, interactive_state], 
                                    outputs=[interactive_state], api_name="resize_ratio")
@@ -616,7 +628,7 @@ with gr.Blocks() as iface:
         [[],[]],
         None,
         None,
-        gr.update(visible=False), gr.update(visible=False), gr.update(visible=False), \
+        gr.update(visible=False), gr.update(visible=False), gr.update(visible=False), gr.update(visible=False),\
         gr.update(visible=False), gr.update(visible=False), gr.update(visible=False), gr.update(visible=False), \
         gr.update(visible=False), gr.update(visible=False), gr.update(visible=False, value=[]), gr.update(visible=False), \
         gr.update(visible=False), gr.update(visible=False)
