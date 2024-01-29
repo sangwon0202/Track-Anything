@@ -581,7 +581,7 @@ with gr.Blocks() as iface:
     # tracking video from select image and mask
     tracking_video_predict_button.click(
         fn=vos_tracking_video,
-        inputs=[video_state, interactive_state, mask_dropdown],
+        inputs=[video_state, interactive_state, mask_dropdown, way_state],
         outputs=[video_output, video_state, interactive_state, run_status]
     )
 
