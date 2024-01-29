@@ -253,9 +253,15 @@ def vos_tracking_video(video_state, interactive_state, mask_dropdown):
         template_mask[0][0]=1
         operation_log = [("Error! Please add at least one mask to track by clicking the left image.","Error"), ("","")]
         # return video_output, video_state, interactive_state, operation_error
+
+
+    masks, logits, painted_images = custom_process(images=following_frames, init_mask=template_mask)
+
+    """
     masks, logits, painted_images = model.generator(images=following_frames, template_mask=template_mask)
     # clear GPU memory
     model.xmem.clear_memory()
+    """
 
     if interactive_state["track_end_number"]: 
         video_state["masks"][video_state["select_frame_number"]:interactive_state["track_end_number"]] = masks
@@ -287,11 +293,57 @@ def vos_tracking_video(video_state, interactive_state, mask_dropdown):
     #### shanggao code for mask save
     return video_output, video_state, interactive_state, operation_log
 
+
+# output: masks, logits, painted_images
+def custom_process(images, init_mask) :
+    way = 4
+    
+    if(len(images) < way) :
+        masks, logits, painted_images = model.generator(images=images, template_mask=init_mask)
+        model.xmem.clear_memory()
+        return masks, logits, painted_images
+    
+    init_masks, _ , _ = model.generator(images=images[0:way], template_mask=init_mask)
+    model.xmem.clear_memory()
+
+    separated_images = [[]] * way
+    separated_masks = []
+    separated_logits = []
+    separated_painted_images = []
+
+    for i in range(len(images)) :
+        separated_images[i % way].append(images[i])
+
+    for w in range(way) :
+        masks, logits, painted_images = model.generator(images=separated_images[w], template_mask=init_masks[w])
+        model.xmem.clear_memory()
+
+        separated_masks.append(masks)
+        separated_logits.append(logits)
+        separated_painted_images.append(painted_images)
+        
+    masks = []
+    logits = []
+    painted_images = []
+
+    for i in range(len(images)) :
+        masks.append(separated_masks[i % way][i / way])
+        logits.append(separated_logits[i % way][i / way])
+        painted_images.append(separated_painted_images[i % way][i / way])
+    
+    return masks, logits, painted_images
+
+
+
+    
+
+
 # extracting masks from mask_dropdown
 # def extract_sole_mask(video_state, mask_dropdown):
 #     combined_masks = 
 #     unique_masks = np.unique(combined_masks)
 #     return 0 
+
 
 # inpaint 
 def inpaint_video(video_state, interactive_state, mask_dropdown):
