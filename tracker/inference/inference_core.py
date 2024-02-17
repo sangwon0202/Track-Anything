@@ -97,8 +97,10 @@ class InferenceCore:
             # also create new hidden states
             self.memory.create_hidden_state(len(self.all_labels), key)
 
+
         # save as memory if needed
         if is_mem_frame:
+            print("### memory update! ###")
             value, hidden = self.network.encode_value(image, f16, self.memory.get_hidden(), 
                                     pred_prob_with_bg[1:].unsqueeze(0), is_deep_update=is_deep_update)
             self.memory.add_memory(key, shrinkage, value, self.all_labels, 
